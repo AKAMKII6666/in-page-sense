@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>degenerate playground</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <p><a href="./index.html">← playground</a></p>
+    <h1>无 pagetitle</h1>
+    <p><button id="take-snapshot" type="button">snapshot()</button></p>
+    <p>这一页没有 <code>data-e2e-pagetitle</code>，应走 <code>mode: "degenerate"</code>。</p>
+    <button type="button">普通按钮</button>
+    <a href="#x">普通链接</a>
+    <label>邮箱 <input type="email" value="dev@example.com" /></label>
+    <h2>snapshot</h2>
+    <div id="output"></div>
+    <script type="module" src="./degenerate.ts"></script>
+  </body>
+</html>

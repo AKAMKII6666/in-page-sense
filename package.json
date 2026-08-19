@@ -1,0 +1,42 @@
+{
+  "name": "in-page-sense",
+  "version": "0.1.1",
+  "description": "Page-local sensing: scan e2e markers into a short menu and shallow tree.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src tests playground",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "playground": "vite --config playground/vite.config.ts"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "@eslint/js": "9.28.0",
+    "@types/jsdom": "21.1.7",
+    "@types/node": "22.15.30",
+    "eslint": "9.28.0",
+    "jsdom": "26.1.0",
+    "tsup": "8.5.0",
+    "typescript": "5.8.3",
+    "typescript-eslint": "8.33.1",
+    "vite": "6.3.5",
+    "vitest": "3.2.4"
+  }
+}

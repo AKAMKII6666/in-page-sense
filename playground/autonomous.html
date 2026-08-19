@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>autonomous playground</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div hidden data-e2e-pagetitle="ready-list"></div>
+    <p><a href="./index.html">← playground</a></p>
+    <h1>有 pagetitle</h1>
+    <p>
+      <button id="take-snapshot" type="button">snapshot()</button>
+      <button id="open-modal" type="button">打开假 Modal</button>
+    </p>
+
+    <section data-e2e-kind="region" data-e2e-id="main">
+      <table>
+        <tbody>
+          <tr>
+            <td>
+              <button
+                data-e2e-kind="playable"
+                data-e2e-id="row-edit"
+                data-e2e-event="click"
+                data-e2e-title="Edit"
+                data-e2e-desc="Edit this row"
+              >
+                Edit
+              </button>
+            </td>
+            <td>
+              <span data-e2e-kind="content" data-e2e-id="status" data-e2e-title="Status">Idle</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <button
+        data-e2e-kind="playable"
+        data-e2e-id="save"
+        data-e2e-event="click"
+        data-e2e-title="Save"
+        data-e2e-desc="Save the list"
+      >
+        Save
+      </button>
+    </section>
+
+    <div id="modal" class="modal" hidden>
+      <div class="modal-panel" data-e2e-kind="region" data-e2e-id="confirm-dialog">
+        <p>假 Modal（position:fixed 全屏）</p>
+        <button
+          data-e2e-kind="playable"
+          data-e2e-id="dialog-ok"
+          data-e2e-event="click"
+          data-e2e-title="OK"
+          data-e2e-desc="Confirm dialog"
+        >
+          OK
+        </button>
+        <button id="close-modal" type="button">关闭</button>
+      </div>
+    </div>
+
+    <h2>snapshot</h2>
+    <div id="output"></div>
+    <script type="module" src="./autonomous.ts"></script>
+  </body>
+</html>

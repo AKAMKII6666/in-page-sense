@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>empty blocking layer</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div hidden data-e2e-pagetitle="ready-list"></div>
+    <p><a href="./index.html">← playground</a></p>
+    <h1>空挡层</h1>
+    <p><button id="take-snapshot" type="button">snapshot()</button></p>
+    <button
+      data-e2e-kind="playable"
+      data-e2e-id="under"
+      data-e2e-event="click"
+      data-e2e-title="Under"
+      data-e2e-desc="Should not appear while overlay covers"
+    >
+      层下按钮
+    </button>
+    <div class="modal">
+      <div class="modal-panel">
+        <p>全屏遮罩，没有 data-e2e playable。</p>
+        <button type="button">未打点关闭</button>
+      </div>
+    </div>
+    <h2>snapshot</h2>
+    <div id="output"></div>
+    <script type="module" src="./blocked-empty.ts"></script>
+  </body>
+</html>

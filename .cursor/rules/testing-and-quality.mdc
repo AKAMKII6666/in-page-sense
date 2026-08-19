@@ -1,0 +1,54 @@
+---
+description: in-page-sense 修改后的检查、测试与契约门禁
+alwaysApply: true
+---
+
+# 测试与质量门禁
+
+## 用例位置
+
+- Vitest 用例放在仓库根目录 `tests/`，按模块分子目录（与 `src/` 对应）。
+- **禁止**在 `src/**` 内新增 `*.test.ts`；被测源码用包内路径别名或相对导入。
+
+## 修改后验证
+
+- 修改 TypeScript 后运行 `npm run typecheck`（脚本落地后）。
+- 修改受 ESLint 管理的源码后运行 `npm run lint`（脚本落地后）。
+- 修改职责边界、公开合同或 `.cursor/rules` 后，应跑边界/契约相关检查（有 `check:rules` 则必跑）。
+- 修改扫描、编树、模式分流、解析器或复杂纯函数时，必须补充或更新测试。
+- 修复缺陷时优先增加能够复现缺陷的回归测试。
+- 若检查因环境或现有配置无法运行，必须明确报告，不得声称已经通过。
+
+## 禁止事项
+
+- 禁止通过关闭 `strict`、跳过目标目录或大范围 `eslint-disable` 让检查通过。
+- `eslint-disable` 必须限制到最小范围并说明原因。
+- 禁止为了通过检查进行无关格式化、重构或行为修改。
+- 禁止删除现有测试来掩盖失败。
+
+## 可不写测试的情况
+
+- 纯文档、注释调整，且不改变运行时逻辑。
+- 与当前任务无关的格式化或 import 顺序整理。
+- 上述情况仍须运行 typecheck/lint（若触及 TS/ESLint 范围且脚本已存在）。
+
+## 高风险契约（本库）
+
+以下区域修改时必须优先增加或更新契约测试：
+
+| 契约 | 断言要点 |
+|------|----------|
+| **pagetitle 分流** | 有非空 pagetitle → `autonomous`；无/空 → `degenerate` 且无 `playables` |
+| **id 同一套** | 树中带 id 的 playable/content 都能在对应数组里找到，反之亦然（岛展开后同样） |
+| **焦点层收口** | `cover=most` 时层外 id 不出现在 `playables` / 树操作节点 |
+| **空挡层** | `BLOCKED_NO_PLAYABLE` ⇒ `playables: []` 且 `fallback` 非空；generic `ref` 不在 `playables` |
+| **pageTitle 现读** | 连续两次 snapshot 之间改隐藏节点，第二次回包跟新值 |
+| **截断配额** | 超长 innerText / a11y 被截断；generic `truncated` 诚实 |
+| **禁止 innerHTML** | content / generic 文本路径不读取 `innerHTML` 作为对外字段 |
+| **resolve(id)** | 与 snapshot 菜单同一套：包装→内层控件；岛合成 id→槽位；层外 / 空挡层 / OUTSIDE_ROOT / degenerate / `g0` → `null` |
+
+最终报告应列出已运行的检查、结果和未覆盖风险。
+
+## STOP static expansion（与需求衔接）
+
+当 P0/P1 合同已清、核心 DTO 有测试、当前范围无新缺口时，应建议：**停止向控制 / BOM / MCP / Playwright 运行时扩张 → 进入 playground 对照真实 DOM**。

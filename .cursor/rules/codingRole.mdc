@@ -1,0 +1,56 @@
+---
+description: in-page-sense 核心职责边界与规则索引
+alwaysApply: true
+---
+
+# in-page-sense 核心工程规则
+
+手写规范；与通用建议冲突时，以本项目规则和 `规则制定原则.mdc` 为准。  
+需求真源（进行中）：`docs/AI与人类/需求拟定/`。
+
+## 必须执行 — 职责原子
+
+- **本库只做** 页内扫描、浅字符树、stacking/焦点层、退化/空挡层 generic 快照、`TSenseSnapshot`。
+- **禁止控制能力进入本库：** 虚拟指针、`click` / `type` / `dispatchEvent` 操作序列、调试光标。
+- **禁止编排/通道进入本库：** `pageId` 信封、插件握手、WebSocket、MCP server、`escapes` / BOM 命令。
+- **禁止 BOM / eval：** `reload`、`location.assign`、日常路径的任意脚本执行。
+- **禁止宿主业务进入本库：** `SLIMVID_*` 环境变量、`isInjectE2eAttr`、`E2ePlayable` React 包装、内置某一产品的岛 selector 表。
+- **公开入口：** 以 `createSense` / `snapshot` / `resolve` / `TSenseSnapshot` 为合同；`src/index.ts` 可作唯一公开 barrel；**库内部**禁止用深层 `index.ts` 把 scan/tree/generic 搅成大杂烩 re-export。
+- **`resolve(id)` 与 snapshot 同一套名单：** 焦点层外、空挡层、OUTSIDE_ROOT、degenerate、generic `ref` 必须返回 `null`。禁止第二套 querySelector 名单。`resolve` 不派发事件。
+- **目录职责聚类（反平铺）：** 同目录若已有 ≥2 组可区分职责，且可分类文件合计 ≥4，必须分子目录（如 `scan/` vs `tree/` vs `generic/`）。禁止仅靠长文件名前缀代替目录。不要为空壳「未来域」建只有 1 个文件的目录。
+- 修改必须聚焦当前任务；不擅自补完控制/编排/通道。本次新增若会恶化平铺，须在本任务内分目录。
+- 修改前先阅读相关模块与 `docs/AI与人类/需求拟定/`；默认过程记录写 `docs/AI与人类/`；固化 `docs/AI文档/` 须用户明示。
+
+## 必须执行 — 失败方向
+
+- 无 pagetitle 不得产出 `mode: "autonomous"` 菜单。
+- `view: "blocking-layer"` 时 `playables` 不得含层外 id。
+- `BLOCKED_NO_PLAYABLE` 时 `playables` 必须为 `[]`，且 generic `ref` 不得写入 `playables`。
+- 截图失败：`screenshot: null`，不得假装已看见图像。
+- 详见 `docs/AI与人类/规范和原则/快照诚实与失败方向.md`。
+
+## 默认执行
+
+- 复杂逻辑显式展开，优先便于断点调试和定位分支的写法。
+- `pageTitle` 每次 `snapshot()` 现读；禁止创建时缓存当页身份。
+- 抽取公共逻辑前确认真实复用或稳定职责边界。
+- 大文件不是独立缺陷；仅在新增职责或修改风险明显时拆分。拆文件后若同目录多职责混放，须同时按聚类收目录。
+
+## 领域规则索引
+
+| 文件 | 触发 |
+|------|------|
+| `规则制定原则.mdc` | 始终 |
+| `codingRole.mdc`（本文件） | 始终 |
+| `testing-and-quality.mdc` | 始终 |
+| `snapshot-lifecycle-sniffing.mdc` | 始终（软提醒） |
+| `code-style.mdc` | `src/**/*.ts` |
+| `docs-governance.mdc` | `docs/**` |
+| `docs-execution.mdc` | `docs/**`、`src/**` |
+| `dependency-and-internals.mdc` | `package.json`、锁文件 |
+
+## 宿主提醒（本库不管，但实现时勿相反假设）
+
+- 是否仅在 development 打点、是否握手后才注入 `data-e2e-*`，由**宿主** fail-closed；本库不读取 Shopify/SlimVID 环境变量。
+- 生产商家路径不得依赖本库能力。
+- 岛槽位表由宿主传入；本库不内置 SlimVID / Polarise CSS hash。
