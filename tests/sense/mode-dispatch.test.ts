@@ -20,7 +20,7 @@ describe("pagetitle 分流", () => {
     expect(snap.playables.map((item) => item.id)).toEqual(["save"]);
   });
 
-  it("无 pagetitle 时走 degenerate，且没有 playables", async () => {
+  it("无 pagetitle 时走 degenerate，且投影 playables", async () => {
     mount(SAVE_BUTTON);
     const snap = await createSense({ root: document }).snapshot();
     expect(snap.mode).toBe("degenerate");
@@ -29,7 +29,9 @@ describe("pagetitle 分流", () => {
     }
     expect(snap.pageTitle).toBeNull();
     expect(snap.generic.scope).toBe("root");
-    expect("playables" in snap).toBe(false);
+    expect(snap.playables.length).toBeGreaterThan(0);
+    expect(snap.playables[0]?.id).toBe("g0");
+    expect(snap.playables[0]?.desc).toBe("generic/degenerate");
   });
 
   it("pagetitle 为空字符串时走 degenerate", async () => {

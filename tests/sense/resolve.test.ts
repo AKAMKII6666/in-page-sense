@@ -117,7 +117,14 @@ describe("resolve(id)", () => {
     expect(sense.resolve(genericRef ?? "g0")).toBeNull();
   });
 
-  it("degenerate 时叶子 id 为 null", () => {
+  it("degenerate 时 g0 可解析到裸 button", () => {
+    mount(`<button type="button" id="bare-save">Save</button>`);
+    const sense = createSense({ root: document });
+    const aimed = sense.resolve("g0");
+    expect(aimed).toBe(document.getElementById("bare-save"));
+  });
+
+  it("degenerate 时叶子 e2e id 仍为 null", () => {
     mount(SAVE_BUTTON);
     expect(createSense({ root: document }).resolve("save")).toBeNull();
   });

@@ -83,7 +83,8 @@ export interface ISense {
   snapshot(): Promise<TSenseSnapshot>;
   /**
    * 把本帧菜单 id 解析成 bot 瞄准节点。与 snapshot 共用扫描/收口；同步、不派发事件。
-   * 叶子取内层控件（没有则包装）；岛合成 id 取槽位元素。层外 / generic `g0` / 空码 / 未知 id → null。
+   * 叶子取内层控件（没有则包装）；岛合成 id 取槽位元素。层外 / 空码 / 未知 id → null。
+   * `mode=degenerate` 下 `g*` 可解析；healthy autonomous 下 `g*` → null。
    */
   resolve(id: string): Element | null;
 }
@@ -169,7 +170,7 @@ export interface ISenseGenericFallback {
   nodeCount: number;
   /** 本帧使用的 maxNodes。 */
   maxNodes: number;
-  /** 配额内扁列表；ref 不得写入 playables。 */
+  /** 配额内扁列表；ref 与 degenerate `playables[].id` 对齐。 */
   interactables: ISenseGenericInteractable[];
   /** 浅 a11y 字符；超长截断。 */
   a11yText: string;
@@ -212,6 +213,8 @@ export interface ISenseDegenerateSnapshot extends ISenseSnapshotMeta {
   mode: "degenerate";
   /** 退化模式固定为 null。 */
   pageTitle: null;
+  /** 投影后的可操作菜单；与 generic.interactables 中可 run 项对齐。 */
+  playables: ISensePlayableItem[];
   /** 配额内普通快照；scope 为 root。 */
   generic: ISenseGenericFallback;
 }

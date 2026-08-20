@@ -5,6 +5,11 @@
 
 import { readViewport } from "./dom";
 import { buildGenericFallback } from "./generic/buildGenericFallback";
+import {
+  collectGenericElements,
+  elementForGenericRef,
+} from "./generic/collectGenericElements";
+import { projectGenericToPlayables } from "./generic/projectPlayables";
 import type { ICollectedStackingLayer, IScannedContent, IScannedPlayable } from "./internal-types";
 import { resolveQuotas } from "./quotas";
 import { resolveAimElement } from "./scan/aimControl";
@@ -88,6 +93,7 @@ export function createSense(options?: ICreateSenseOptions): ISense {
         pageTitle: null,
         capturedAt,
         viewport,
+        playables: projectGenericToPlayables(generic.interactables),
         generic,
       };
     }
@@ -205,6 +211,19 @@ export function createSense(options?: ICreateSenseOptions): ISense {
 
     const root = resolveRoot(options);
     const menu = scanLiveMenu(root, options, quotas.contentTextChars);
+
+    if (menu.pageTitle === null) {
+      if (!/^g\d+$/.test(trimmed)) {
+        return null;
+      }
+      const collected = collectGenericElements({ scopeRoot: root, quotas });
+      const element = elementForGenericRef(collected, trimmed);
+      if (!element) {
+        return null;
+      }
+      return resolveAimElement(element);
+    }
+
     const playables = livePlayables(menu);
 
     for (const record of playables) {

@@ -41,7 +41,7 @@ Inside the caller-supplied `root`, it **pulls one frame** for an Agent or orches
 
 | 第一个 `data-e2e-pagetitle` 非空 | 无该节点，或第一个值为空 |
 |----------------------------------|--------------------------|
-| `mode: "autonomous"`：`playables` + `contents` + `asciiTree` | `mode: "degenerate"`：配额内 a11y + 可选截图 |
+| `mode: "autonomous"`：`playables` + `contents` + `asciiTree` | `mode: "degenerate"`：投影 `playables[]` + generic a11y + 可选截图 |
 
 | First `data-e2e-pagetitle` is non-empty | Missing node, or first value is empty |
 |----------------------------------------|----------------------------------------|
@@ -452,15 +452,14 @@ if (!target) {
 // 交给 in-page-bot.run({ target })；本库不 click。
 ```
 
-`resolve` 与菜单同一套：挡层底下的 id、generic `ref` 都会得到 `null`。
-
-`resolve` uses the same menu as `snapshot`. Ids under a blocking layer and generic `ref`s return `null`.
+`resolve` 与菜单同一套：挡层底下的 id、healthy autonomous 下 generic `ref` 为 `null`；**`mode=degenerate` 时 `g*` 可 resolve**（与投影 `playables[]` 对齐）。
 
 ### 4.13 按回包分支 / Branch on the snapshot
 
 ```ts
 async function onSnapshot(snap: TSenseSnapshot): Promise<void> {
   if (snap.mode === "degenerate") {
+    usePlayables(snap.playables);
     showGeneric(snap.generic);
     return;
   }
@@ -513,7 +512,7 @@ async function onSnapshot(snap: TSenseSnapshot): Promise<void> {
 |--|--|
 | 参数 / Param | 菜单 `id`（叶子 `data-e2e-id` 或岛合成 id） |
 | 返回 / Returns | 瞄准 `Element`，或 `null` |
-| 行为 / Behavior | 与 `snapshot().playables` 同一套扫描/收口；同步；不派发事件。叶子取内层 `button/a/input/[role=button]`；没有则返回包装。generic `g0`、层外、空挡层、degenerate 均为 `null`。 |
+| 行为 / Behavior | 与 `snapshot().playables` 同一套扫描/收口；同步；不派发事件。叶子取内层 `button/a/input/[role=button]`；没有则返回包装。healthy autonomous 下 generic `g*`、层外、空挡层为 `null`；**degenerate 下 `g*` 可解析**。 |
 
 ### `islandSlots` 槽位 / Slot locator
 
@@ -681,6 +680,9 @@ No pagetitle:
 {
   "mode": "degenerate",
   "pageTitle": null,
+  "playables": [
+    { "id": "g0", "event": "click", "title": "普通按钮", "desc": "generic/degenerate", "enabled": true }
+  ],
   "generic": {
     "kind": "generic",
     "scope": "root",
