@@ -1,6 +1,6 @@
 /**
  * 模块名称：annotatePlayables
- * 模块说明：在诊断长图上为每个带 box 的 playable 画红框 + 黑底白字 label。
+ * 模块说明：在诊断长图上为每个带 box 的 playable 画红框 + 黑底白字整数编号。
  */
 
 import type { ISenseBox, ISenseScreenshot } from "../types";
@@ -14,10 +14,8 @@ const PAD_X = 4;
 const PAD_Y = 2;
 
 export interface IAnnotatePlayableMark {
-  /** 菜单 id。 */
-  id: string;
-  /** 短标题；空则 label 用 id。 */
-  title: string;
+  /** 与回包 annotateIndex 一致的编号（从 0 起）。 */
+  index: number;
   /** 文档坐标，与长图同系。 */
   box: ISenseBox;
 }
@@ -31,19 +29,14 @@ function loadImage(bytesBase64: string, mime: string): Promise<HTMLImageElement>
   });
 }
 
-/** label：名称 + xy + 大小（取整）。 */
+/** label：整数编号字符串。 */
 export function formatPlayableAnnotateLabel(mark: IAnnotatePlayableMark): string {
-  const name = mark.title.trim().length > 0 ? mark.title.trim() : mark.id;
-  const x = Math.round(mark.box.x);
-  const y = Math.round(mark.box.y);
-  const w = Math.round(mark.box.w);
-  const h = Math.round(mark.box.h);
-  return `${name} x=${x},y=${y} ${w}×${h}`;
+  return String(mark.index);
 }
 
 /**
- * 烧录每个 playable 红框与 label；返回新 png。
- * 无 box / 无效框跳过；不假画。
+ * 烧录每个 playable 红框与编号 label；返回新 png。
+ * 无效框跳过；不假画。
  */
 export async function annotatePlayablesOnScreenshot(
   base: ISenseScreenshot,

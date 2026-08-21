@@ -144,13 +144,15 @@ async function attachDiagnosticImage(
 
     if (annotatePlayables) {
       const marks: IAnnotatePlayableMark[] = [];
+      let nextIndex = 0;
       for (const item of snap.playables) {
         if (item.box) {
+          item.annotateIndex = nextIndex;
           marks.push({
-            id: item.id,
-            title: item.title,
+            index: nextIndex,
             box: item.box,
           });
+          nextIndex += 1;
         }
       }
       if (marks.length > 0) {
@@ -162,7 +164,10 @@ async function attachDiagnosticImage(
           snap.screenshot = burned;
           syncGenericScreenshot(snap, burned);
         } catch {
-          // 点位标注失败不抹掉已成功的视口诊断图
+          // 点位标注失败：清掉已写的 annotateIndex，避免图无号但 JSON 有号
+          for (const item of snap.playables) {
+            delete item.annotateIndex;
+          }
         }
       }
     }

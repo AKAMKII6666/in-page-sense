@@ -105,8 +105,9 @@ export interface ISenseSnapshotOptions {
    */
   image?: boolean;
   /**
-   * 在诊断图上烧录每个 playable 红框+label。
+   * 在诊断图上烧录每个有 box 的 playable 红框+整数编号。
    * 调用方须保证 image:true（page 门闩）；sense 在无图时不 annotate。
+   * 成功时回填 playables[].annotateIndex。
    */
   annotatePlayables?: boolean;
 }
@@ -135,6 +136,11 @@ export interface ISensePlayableItem {
   enabled: boolean;
   /** 仅 image:true：文档坐标 CSS px。 */
   box?: ISenseBox;
+  /**
+   * 仅 annotatePlayables:true：与诊断图红框上整数编号一致（从 0 起）。
+   * 无 box 则缺省；非稳定 API，下一帧可能重排。
+   */
+  annotateIndex?: number;
 }
 
 export interface ISenseContentItem {

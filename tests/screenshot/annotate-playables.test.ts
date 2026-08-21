@@ -22,26 +22,24 @@ const TINY_PNG_B64 =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
 
 describe("formatPlayableAnnotateLabel", () => {
-  it("uses title when present; else id; rounds box", () => {
+  it("returns integer index as string", () => {
     expect(
       formatPlayableAnnotateLabel({
-        id: "btn-a",
-        title: "Save",
-        box: { x: 10.4, y: 20.6, w: 30.2, h: 40.8 },
+        index: 0,
+        box: { x: 10, y: 20, w: 30, h: 40 },
       }),
-    ).toBe("Save x=10,y=21 30×41");
+    ).toBe("0");
     expect(
       formatPlayableAnnotateLabel({
-        id: "btn-a",
-        title: "  ",
+        index: 12,
         box: { x: 1, y: 2, w: 3, h: 4 },
       }),
-    ).toBe("btn-a x=1,y=2 3×4");
+    ).toBe("12");
   });
 });
 
 describe("snapshot annotatePlayables 开关", () => {
-  it("image:true 默认不调用 annotatePlayables", async () => {
+  it("image:true 默认不调用 annotatePlayables、无 annotateIndex", async () => {
     stubViewport(800, 600);
     Object.defineProperty(document.documentElement, "scrollWidth", {
       configurable: true,
@@ -64,7 +62,7 @@ describe("snapshot annotatePlayables 开关", () => {
       async (base) => base,
     );
 
-    await createSense({
+    const snap = await createSense({
       root: document,
       captureScreenshot: async () => ({
         mime: "image/png",
@@ -75,9 +73,12 @@ describe("snapshot annotatePlayables 开关", () => {
     }).snapshot({ image: true });
 
     expect(spy).not.toHaveBeenCalled();
+    if (snap.mode === "autonomous") {
+      expect(snap.playables[0]?.annotateIndex).toBeUndefined();
+    }
   });
 
-  it("image+annotatePlayables 成功图时调用 annotatePlayables", async () => {
+  it("image+annotatePlayables 烧录编号并回填 annotateIndex", async () => {
     stubViewport(800, 600);
     Object.defineProperty(document.documentElement, "scrollWidth", {
       configurable: true,
@@ -116,27 +117,33 @@ describe("snapshot annotatePlayables 开关", () => {
     expect(snap.screenshot).not.toBeNull();
     expect(spy).toHaveBeenCalled();
     const marks = spy.mock.calls[0]?.[1] as {
-      id: string;
-      title: string;
+      index: number;
       box: { x: number; y: number; w: number; h: number };
     }[];
     expect(marks.length).toBeGreaterThan(0);
-    expect(marks[0]?.id).toBe("save");
-    expect(marks[0]?.title).toBe("Save");
-    expect(marks[0]?.box.w).toBeGreaterThan(0);
-    expect(formatPlayableAnnotateLabel(marks[0]!)).toContain("Save");
+    expect(marks[0]?.index).toBe(0);
+    expect(formatPlayableAnnotateLabel(marks[0]!)).toBe("0");
     expect(snap.screenshot?.bytesBase64).toBe("annotated");
+    if (snap.mode === "autonomous") {
+      const save = snap.playables.find((p) => p.id === "save");
+      expect(save?.annotateIndex).toBe(0);
+      expect(save?.box).toBeTruthy();
+    }
   });
 
-  it("双 null 时不调用 annotatePlayables", async () => {
+  it("双 null 时不调用 annotatePlayables、无 annotateIndex", async () => {
     stubViewport(800, 600);
-    mount(`${PAGE_TITLE_NODE}${SAVE_BUTTON}`);
+    const root = mount(`${PAGE_TITLE_NODE}${SAVE_BUTTON}`);
+    const btn = root.querySelector("[data-e2e-id=save]");
+    if (btn) {
+      stubRect(btn, { left: 10, top: 20, width: 80, height: 24 });
+    }
     const spy = vi.spyOn(
       annotatePlayablesMod,
       "annotatePlayablesOnScreenshot",
     );
 
-    await createSense({
+    const snap = await createSense({
       root: document,
       captureScreenshot: async () => {
         throw new Error("boom");
@@ -144,5 +151,8 @@ describe("snapshot annotatePlayables 开关", () => {
     }).snapshot({ image: true, annotatePlayables: true });
 
     expect(spy).not.toHaveBeenCalled();
+    if (snap.mode === "autonomous") {
+      expect(snap.playables[0]?.annotateIndex).toBeUndefined();
+    }
   });
 });
