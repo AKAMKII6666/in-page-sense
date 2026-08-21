@@ -23,6 +23,10 @@ import {
   captureDiagnostic,
   readDocumentBox,
 } from "./screenshot/captureDiagnostic";
+import {
+  annotatePlayablesOnScreenshot,
+  type IAnnotatePlayableMark,
+} from "./screenshot/annotatePlayables";
 import { buildAsciiTree } from "./tree/buildAsciiTree";
 import type {
   ICreateSenseOptions,
@@ -121,6 +125,7 @@ async function attachDiagnosticImage(
   root: Document | ShadowRoot | Element,
   createOptions: ICreateSenseOptions | undefined,
   quotas: ReturnType<typeof resolveQuotas>,
+  annotatePlayables: boolean,
 ): Promise<TSenseSnapshot> {
   const diagnostic = await captureDiagnostic({
     root,
@@ -136,6 +141,31 @@ async function attachDiagnosticImage(
       snap.playables = attachBoxesToProjected(snap.playables, root, quotas);
     }
     // autonomous playables already got boxes at build time when withBox=true
+
+    if (annotatePlayables) {
+      const marks: IAnnotatePlayableMark[] = [];
+      for (const item of snap.playables) {
+        if (item.box) {
+          marks.push({
+            id: item.id,
+            title: item.title,
+            box: item.box,
+          });
+        }
+      }
+      if (marks.length > 0) {
+        try {
+          const burned = await annotatePlayablesOnScreenshot(
+            diagnostic.screenshot,
+            marks,
+          );
+          snap.screenshot = burned;
+          syncGenericScreenshot(snap, burned);
+        } catch {
+          // 点位标注失败不抹掉已成功的视口诊断图
+        }
+      }
+    }
   }
 
   return snap;
@@ -281,7 +311,13 @@ export function createSense(options?: ICreateSenseOptions): ISense {
       return snap;
     }
 
-    return attachDiagnosticImage(snap, root, options, quotas);
+    return attachDiagnosticImage(
+      snap,
+      root,
+      options,
+      quotas,
+      snapshotOptions?.annotatePlayables === true,
+    );
   }
 
   function resolve(id: string): Element | null {

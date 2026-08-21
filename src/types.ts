@@ -104,6 +104,11 @@ export interface ISenseSnapshotOptions {
    * 日常探测勿开。
    */
   image?: boolean;
+  /**
+   * 在诊断图上烧录每个 playable 红框+label。
+   * 调用方须保证 image:true（page 门闩）；sense 在无图时不 annotate。
+   */
+  annotatePlayables?: boolean;
 }
 
 export interface ISense {
