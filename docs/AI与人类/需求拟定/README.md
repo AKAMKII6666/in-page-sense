@@ -40,7 +40,7 @@
 8. **感知是拉：** 只响应 `snapshot()` / `resolve(id)`；不订阅 DOM、不向 MCP 推全量树。  
 9. **岛：** 宿主注入槽位表；本库不内置业务 selector JSON，不写 Polarise CSS hash。  
 10. **闸门 / 打点组件不属于本库：** `isInjectE2eAttr`、`E2ePlayable`、SlimVID env 由宿主负责。  
-11. **截图：** 可选 `captureScreenshot` 或 `screenshot: null`；不当点击目标；不默认拉 html2canvas。  
+11. **截图：** 按需 `snapshot({ image: true })` → 整页长图（红框+label）+ `currentView`；日常 snapshot 不出图。可 `captureScreenshot` 覆盖底图；失败双 `null`；不当点击目标；内置 `modern-screenshot`，禁止默认 html2canvas。  
 12. **通道不做：** 扩展 / WebSocket / MCP / `pageId` 信封属于 in-page-playable 或宿主。
 
 ## 工程规则（质量把控）

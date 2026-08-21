@@ -12,9 +12,9 @@ alwaysApply: false
 
 ## 必须执行
 
-- **默认零运行时依赖**（不含 TypeScript/构建/测试工具）。新增运行时依赖前必须说明：用途、为何标准库/现有代码不够、体积影响。
+- 运行时依赖默认尽量少。允许截图专用依赖 **`modern-screenshot`**（整页诊断图）；新增其它运行时依赖前必须说明：用途、为何不够、体积影响。
 - 不得引入 jQuery、大型 UI 库、自动化框架（Playwright 等）作为本库运行时依赖。
-- **不得**为截图默认引入 html2canvas（或同类）运行时依赖；截图走可选 `captureScreenshot` 或 `screenshot: null`。
+- **不得**默认引入 html2canvas；诊断截图走内置 `modern-screenshot` + 可选 `captureScreenshot` 覆盖底图；失败时 `screenshot` / `currentView` 双 `null`。
 - 不得引入第三方「DOM→线框 IR」作为运行时依赖。
 - 不得在同一任务中顺手升级无关依赖。
 - `package.json` 与锁文件必须同步。

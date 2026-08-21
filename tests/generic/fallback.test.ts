@@ -45,8 +45,8 @@ describe("空挡层", () => {
   });
 });
 
-describe("截图", () => {
-  it("未注入 captureScreenshot 时 screenshot 为 null", async () => {
+describe("截图（legacy generic 字段）", () => {
+  it("日常 snapshot 时 generic.screenshot 为 null", async () => {
     mount(`<button type="button">X</button>`);
     const snap = await createSense({ root: document }).snapshot();
     expect(snap.mode).toBe("degenerate");
@@ -54,30 +54,16 @@ describe("截图", () => {
       return;
     }
     expect(snap.generic.screenshot).toBeNull();
+    expect(snap.screenshot).toBeUndefined();
   });
 
-  it("captureScreenshot 抛错时 screenshot 为 null，a11y 仍给", async () => {
+  it("日常 snapshot 即使注入 captureScreenshot 也不拍", async () => {
+    let called = 0;
     mount(`<button type="button">Still here</button>`);
     const snap = await createSense({
       root: document,
       captureScreenshot: async () => {
-        throw new Error("canvas failed");
-      },
-    }).snapshot();
-
-    expect(snap.mode).toBe("degenerate");
-    if (snap.mode !== "degenerate") {
-      return;
-    }
-    expect(snap.generic.screenshot).toBeNull();
-    expect(snap.generic.a11yText.length).toBeGreaterThan(0);
-  });
-
-  it("注入成功时带上 screenshot", async () => {
-    mount(`<button type="button">X</button>`);
-    const snap = await createSense({
-      root: document,
-      captureScreenshot: async () => {
+        called += 1;
         return {
           mime: "image/png",
           width: 1,
@@ -91,7 +77,9 @@ describe("截图", () => {
     if (snap.mode !== "degenerate") {
       return;
     }
-    expect(snap.generic.screenshot?.bytesBase64).toBe("AA==");
+    expect(called).toBe(0);
+    expect(snap.generic.screenshot).toBeNull();
+    expect(snap.generic.a11yText.length).toBeGreaterThan(0);
   });
 });
 

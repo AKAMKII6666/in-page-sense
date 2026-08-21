@@ -19,12 +19,18 @@ import {
   livePlayables,
   scanLiveMenu,
 } from "./scan/collectLiveMenu";
+import {
+  captureDiagnostic,
+  readDocumentBox,
+} from "./screenshot/captureDiagnostic";
 import { buildAsciiTree } from "./tree/buildAsciiTree";
 import type {
   ICreateSenseOptions,
   ISense,
   ISenseAutonomousSnapshot,
   ISensePlayableItem,
+  ISenseScreenshot,
+  ISenseSnapshotOptions,
   ISenseStackingLayer,
   TSenseSnapshot,
 } from "./types";
@@ -36,14 +42,24 @@ function resolveRoot(options: ICreateSenseOptions | undefined): Document | Shado
   return document;
 }
 
-function toPlayableItem(record: IScannedPlayable): ISensePlayableItem {
-  return {
+function toPlayableItem(
+  record: IScannedPlayable,
+  withBox: boolean,
+): ISensePlayableItem {
+  const item: ISensePlayableItem = {
     id: record.id,
     event: record.event,
     title: record.title,
     desc: record.desc,
     enabled: record.enabled,
   };
+  if (withBox) {
+    const box = readDocumentBox(record.element);
+    if (box) {
+      item.box = box;
+    }
+  }
+  return item;
 }
 
 function toContentItem(record: IScannedContent): ISenseAutonomousSnapshot["contents"][number] {
@@ -68,27 +84,88 @@ function toPublicStacking(layer: ICollectedStackingLayer): ISenseStackingLayer {
   return publicLayer;
 }
 
+function attachBoxesToProjected(
+  playables: ISensePlayableItem[],
+  root: Document | ShadowRoot | Element,
+  quotas: ReturnType<typeof resolveQuotas>,
+): ISensePlayableItem[] {
+  const collected = collectGenericElements({ scopeRoot: root, quotas });
+  return playables.map((item) => {
+    const el = elementForGenericRef(collected, item.id);
+    if (!el) {
+      return item;
+    }
+    const box = readDocumentBox(resolveAimElement(el) ?? el);
+    if (!box) {
+      return item;
+    }
+    return { ...item, box };
+  });
+}
+
+function syncGenericScreenshot(
+  snap: TSenseSnapshot,
+  screenshot: ISenseScreenshot | null,
+): void {
+  if (snap.mode === "degenerate") {
+    snap.generic.screenshot = screenshot;
+    return;
+  }
+  if (snap.fallback) {
+    snap.fallback.screenshot = screenshot;
+  }
+}
+
+async function attachDiagnosticImage(
+  snap: TSenseSnapshot,
+  root: Document | ShadowRoot | Element,
+  createOptions: ICreateSenseOptions | undefined,
+  quotas: ReturnType<typeof resolveQuotas>,
+): Promise<TSenseSnapshot> {
+  const diagnostic = await captureDiagnostic({
+    root,
+    captureScreenshot: createOptions?.captureScreenshot,
+  });
+
+  snap.screenshot = diagnostic.screenshot;
+  snap.currentView = diagnostic.currentView;
+  syncGenericScreenshot(snap, diagnostic.screenshot);
+
+  if (diagnostic.screenshot && diagnostic.currentView) {
+    if (snap.mode === "degenerate") {
+      snap.playables = attachBoxesToProjected(snap.playables, root, quotas);
+    }
+    // autonomous playables already got boxes at build time when withBox=true
+  }
+
+  return snap;
+}
+
 /**
  * 创建感知实例。options 在每次 snapshot / resolve 时读取；pageTitle 不在这里缓存。
  */
 export function createSense(options?: ICreateSenseOptions): ISense {
   const quotas = resolveQuotas(options);
 
-  async function snapshot(): Promise<TSenseSnapshot> {
+  async function snapshot(
+    snapshotOptions?: ISenseSnapshotOptions,
+  ): Promise<TSenseSnapshot> {
+    const wantImage = snapshotOptions?.image === true;
     const root = resolveRoot(options);
     const capturedAt = Date.now();
     const viewport = readViewport(root);
     const menu = scanLiveMenu(root, options, quotas.contentTextChars);
+
+    let snap: TSenseSnapshot;
 
     if (menu.pageTitle === null) {
       const generic = await buildGenericFallback({
         scopeRoot: root,
         scope: "root",
         quotas,
-        captureScreenshot: options?.captureScreenshot,
       });
 
-      return {
+      snap = {
         mode: "degenerate",
         pageTitle: null,
         capturedAt,
@@ -96,11 +173,8 @@ export function createSense(options?: ICreateSenseOptions): ISense {
         playables: projectGenericToPlayables(generic.interactables),
         generic,
       };
-    }
-
-    if (menu.outsideRoot) {
-      // 挡层在扫描根之外：本 root 菜单点不到，禁止把层下 id 当可点菜单。
-      return {
+    } else if (menu.outsideRoot) {
+      snap = {
         mode: "autonomous",
         pageTitle: menu.pageTitle,
         capturedAt,
@@ -114,93 +188,100 @@ export function createSense(options?: ICreateSenseOptions): ISense {
         blocking: null,
         fallback: null,
       };
+    } else {
+      const blockingLayer = menu.blockingLayer;
+
+      if (!blockingLayer) {
+        const playables = livePlayables(menu);
+        const asciiTree = buildAsciiTree({
+          root,
+          markers: menu.markers,
+          stacking: menu.stacking,
+          expandedPlayables: menu.expanded,
+          closeTo: null,
+        });
+
+        snap = {
+          mode: "autonomous",
+          pageTitle: menu.pageTitle,
+          capturedAt,
+          viewport,
+          view: "page",
+          code: null,
+          playables: playables.map((record) => toPlayableItem(record, wantImage)),
+          contents: menu.markers.contents.map(toContentItem),
+          asciiTree,
+          stacking: menu.stacking.map(toPublicStacking),
+          blocking: null,
+          fallback: null,
+        };
+      } else {
+        const closedMarkers = filterMarkersToLayer(menu.markers, blockingLayer.element);
+        const closedExpanded = filterExpandedToLayer(menu.expanded, blockingLayer.element);
+        const closedPlayables = livePlayables(menu);
+
+        const asciiTree = buildAsciiTree({
+          root,
+          markers: closedMarkers,
+          stacking: menu.stacking,
+          expandedPlayables: closedExpanded,
+          closeTo: blockingLayer.element,
+        });
+
+        const blocking = {
+          cover: "most" as const,
+          position: blockingLayer.position,
+          zIndex: blockingLayer.zIndex,
+          playableCount: closedPlayables.length,
+        };
+
+        if (closedPlayables.length === 0) {
+          const fallback = await buildGenericFallback({
+            scopeRoot: blockingLayer.element,
+            scope: "blocking-layer",
+            quotas,
+          });
+
+          snap = {
+            mode: "autonomous",
+            pageTitle: menu.pageTitle,
+            capturedAt,
+            viewport,
+            view: "blocking-layer",
+            code: "BLOCKED_NO_PLAYABLE",
+            playables: [],
+            contents: [],
+            asciiTree,
+            stacking: menu.stacking.map(toPublicStacking),
+            blocking,
+            fallback,
+          };
+        } else {
+          snap = {
+            mode: "autonomous",
+            pageTitle: menu.pageTitle,
+            capturedAt,
+            viewport,
+            view: "blocking-layer",
+            code: null,
+            playables: closedPlayables.map((record) =>
+              toPlayableItem(record, wantImage),
+            ),
+            contents: closedMarkers.contents.map(toContentItem),
+            asciiTree,
+            stacking: menu.stacking.map(toPublicStacking),
+            blocking,
+            fallback: null,
+          };
+        }
+      }
     }
 
-    const blockingLayer = menu.blockingLayer;
-
-    if (!blockingLayer) {
-      const playables = livePlayables(menu);
-      const asciiTree = buildAsciiTree({
-        root,
-        markers: menu.markers,
-        stacking: menu.stacking,
-        expandedPlayables: menu.expanded,
-        closeTo: null,
-      });
-
-      return {
-        mode: "autonomous",
-        pageTitle: menu.pageTitle,
-        capturedAt,
-        viewport,
-        view: "page",
-        code: null,
-        playables: playables.map(toPlayableItem),
-        contents: menu.markers.contents.map(toContentItem),
-        asciiTree,
-        stacking: menu.stacking.map(toPublicStacking),
-        blocking: null,
-        fallback: null,
-      };
+    if (!wantImage) {
+      return snap;
     }
 
-    const closedMarkers = filterMarkersToLayer(menu.markers, blockingLayer.element);
-    const closedExpanded = filterExpandedToLayer(menu.expanded, blockingLayer.element);
-    const closedPlayables = livePlayables(menu);
-
-    const asciiTree = buildAsciiTree({
-      root,
-      markers: closedMarkers,
-      stacking: menu.stacking,
-      expandedPlayables: closedExpanded,
-      closeTo: blockingLayer.element,
-    });
-
-    const blocking = {
-      cover: "most" as const,
-      position: blockingLayer.position,
-      zIndex: blockingLayer.zIndex,
-      playableCount: closedPlayables.length,
-    };
-
-    if (closedPlayables.length === 0) {
-      const fallback = await buildGenericFallback({
-        scopeRoot: blockingLayer.element,
-        scope: "blocking-layer",
-        quotas,
-        captureScreenshot: options?.captureScreenshot,
-      });
-
-      return {
-        mode: "autonomous",
-        pageTitle: menu.pageTitle,
-        capturedAt,
-        viewport,
-        view: "blocking-layer",
-        code: "BLOCKED_NO_PLAYABLE",
-        playables: [],
-        contents: [],
-        asciiTree,
-        stacking: menu.stacking.map(toPublicStacking),
-        blocking,
-        fallback,
-      };
-    }
-
-    return {
-      mode: "autonomous",
-      pageTitle: menu.pageTitle,
-      capturedAt,
-      viewport,
-      view: "blocking-layer",
-      code: null,
-      playables: closedPlayables.map(toPlayableItem),
-      contents: closedMarkers.contents.map(toContentItem),
-      asciiTree,
-      stacking: menu.stacking.map(toPublicStacking),
-      blocking,
-      fallback: null,
-    };
+    return attachDiagnosticImage(snap, root, options, quotas);
   }
 
   function resolve(id: string): Element | null {

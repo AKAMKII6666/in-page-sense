@@ -18,7 +18,7 @@ interface ICreateSenseOptions {
   root?: Document | ShadowRoot | Element;
   /** 岛 id → 槽位寻址表；不传则岛不展开为合成 playable */
   islandSlots?: IIslandSlotTable;
-  /** 可选截图；未传或抛错时 screenshot 为 null */
+  /** 可选：覆盖整页底图；sense 仍统一画红框/label 并写 currentView；尺寸不符 → 双 null */
   captureScreenshot?: (scope: Element) => Promise<ISenseScreenshot>;
   /** 覆盖默认配额 */
   quotas?: {
@@ -29,8 +29,11 @@ interface ICreateSenseOptions {
 }
 
 interface ISense {
-  /** 拉一帧感知；不订阅、不推送 */
-  snapshot(): Promise<TSenseSnapshot>;
+  /**
+   * 拉一帧感知；不订阅、不推送。
+   * `image: true`：整页诊断长图（红框+label）+ `currentView` + playables.box；日常勿开。
+   */
+  snapshot(options?: { image?: boolean }): Promise<TSenseSnapshot>;
   /**
    * 把本帧菜单 id 解析成 bot 瞄准节点。与 snapshot 共用扫描/收口；同步、不派发。
    * 叶子：内层控件，没有则包装。岛合成 id：槽位元素。
@@ -40,7 +43,7 @@ interface ISense {
 }
 ```
 
-`snapshot()` 为 Promise：因为截图回调可能异步。纯 DOM 扫描本身可同步完成。
+`snapshot()` 为 Promise：诊断截图可能异步。纯 DOM 扫描本身可同步完成。
 
 `resolve(id)` 同步。必须与 `snapshot().playables` 同一套 id：收口后层外为 `null`，不得把 generic `ref` 解析成真节点。重复 id 取列表第一个（DOM playables 然后岛展开）。
 
@@ -91,6 +94,31 @@ interface ISensePlayableItem {
   desc: string;
   /** 内层控件 disabled / aria-disabled / loading */
   enabled: boolean;
+  /** 仅 image:true：文档坐标 CSS px，与长图同系 */
+  box?: { x: number; y: number; w: number; h: number };
+}
+
+interface ISenseCurrentView {
+  scrollTop: number;
+  scrollLeft: number;
+  width: number;
+  height: number;
+}
+
+interface ISenseScreenshot {
+  mime: "image/png" | "image/jpeg";
+  width: number;
+  height: number;
+  bytesBase64: string;
+}
+
+interface ISenseSnapshotMeta {
+  capturedAt: number;
+  viewport: ISenseViewport;
+  /** 仅 image:true；与 currentView 同有同无 */
+  screenshot?: ISenseScreenshot | null;
+  /** 仅 image:true；与 screenshot 同有同无 */
+  currentView?: ISenseCurrentView | null;
 }
 
 interface ISenseContentItem {
@@ -131,13 +159,6 @@ interface ISenseGenericInteractable {
   value?: string;
 }
 
-interface ISenseScreenshot {
-  mime: "image/png" | "image/jpeg";
-  width: number;
-  height: number;
-  bytesBase64: string;
-}
-
 interface ISenseGenericFallback {
   kind: "generic";
   scope: "blocking-layer" | "root";
@@ -146,12 +167,8 @@ interface ISenseGenericFallback {
   maxNodes: number;
   interactables: ISenseGenericInteractable[];
   a11yText: string;
+  /** 仅 image:true 成功时与顶层 screenshot 同步；否则 null */
   screenshot: ISenseScreenshot | null;
-}
-
-interface ISenseSnapshotMeta {
-  capturedAt: number;
-  viewport: ISenseViewport;
 }
 
 interface ISenseAutonomousSnapshot extends ISenseSnapshotMeta {

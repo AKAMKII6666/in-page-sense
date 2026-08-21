@@ -57,9 +57,9 @@ export interface IIslandSlotTable {
 }
 
 export interface ISenseScreenshot {
-  /** 截图 MIME；本库不默认引入截图实现。 */
+  /** 截图 MIME。 */
   mime: "image/png" | "image/jpeg";
-  /** 像素宽。 */
+  /** 像素宽（CSS px，与长图一致）。 */
   width: number;
   /** 像素高。 */
   height: number;
@@ -67,20 +67,48 @@ export interface ISenseScreenshot {
   bytesBase64: string;
 }
 
+/** 当前可视区（CSS px）；与长图红框同一组数。 */
+export interface ISenseCurrentView {
+  scrollTop: number;
+  scrollLeft: number;
+  width: number;
+  height: number;
+}
+
+/** 文档坐标盒子（与整页长图同系）。 */
+export interface ISenseBox {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 export interface ICreateSenseOptions {
   /** 查询与扫描根；默认 `document`。只扫此范围内的 DOM。 */
   root?: Document | ShadowRoot | Element;
   /** 岛 id → 槽位寻址表；不传则岛只出现在树上，不展开为合成 playable。 */
   islandSlots?: IIslandSlotTable;
-  /** 可选截图；未传或抛错时 `screenshot` 为 null。 */
+  /**
+   * 可选：覆盖整页诊断底图。
+   * 仅 `snapshot({ image: true })` 时使用；sense 仍统一画红框/label；
+   * 尺寸与文档测量不符 → screenshot/currentView 双 null。
+   */
   captureScreenshot?: (scope: Element) => Promise<ISenseScreenshot>;
   /** 覆盖默认配额；未给的项用库内默认。 */
   quotas?: ISenseQuotaOverrides;
 }
 
+export interface ISenseSnapshotOptions {
+  /**
+   * 按需诊断图。true：整页长图（红框+label）+ currentView + playables.box。
+   * 日常探测勿开。
+   */
+  image?: boolean;
+}
+
 export interface ISense {
   /** 拉一帧感知；不订阅 DOM、不向通道推送。 */
-  snapshot(): Promise<TSenseSnapshot>;
+  snapshot(options?: ISenseSnapshotOptions): Promise<TSenseSnapshot>;
   /**
    * 把本帧菜单 id 解析成 bot 瞄准节点。与 snapshot 共用扫描/收口；同步、不派发事件。
    * 叶子取内层控件（没有则包装）；岛合成 id 取槽位元素。层外 / 空码 / 未知 id → null。
@@ -100,6 +128,8 @@ export interface ISensePlayableItem {
   desc: string;
   /** 内层控件 disabled / aria-disabled / loading；不读 contents 包装本身。 */
   enabled: boolean;
+  /** 仅 image:true：文档坐标 CSS px。 */
+  box?: ISenseBox;
 }
 
 export interface ISenseContentItem {
@@ -174,7 +204,7 @@ export interface ISenseGenericFallback {
   interactables: ISenseGenericInteractable[];
   /** 浅 a11y 字符；超长截断。 */
   a11yText: string;
-  /** 未注入或拍失败时为 null，不得假装已看见图像。 */
+  /** 仅 image:true 成功时与顶层同步；否则 null。 */
   screenshot: ISenseScreenshot | null;
 }
 
@@ -183,6 +213,10 @@ export interface ISenseSnapshotMeta {
   capturedAt: number;
   /** 当时视口。 */
   viewport: ISenseViewport;
+  /** 仅 image:true；与 currentView 同有同无。 */
+  screenshot?: ISenseScreenshot | null;
+  /** 仅 image:true；与 screenshot 同有同无。 */
+  currentView?: ISenseCurrentView | null;
 }
 
 export interface ISenseAutonomousSnapshot extends ISenseSnapshotMeta {

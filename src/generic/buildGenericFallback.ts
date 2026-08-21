@@ -1,28 +1,13 @@
 /**
  * 模块名称：generic/buildGenericFallback
- * 模块说明：退化 / 空挡层附件：配额内 interactables + 浅 a11yText + 可选截图。
+ * 模块说明：退化 / 空挡层附件：配额内 interactables + 浅 a11yText。
+ * 截图改由 snapshot({ image:true }) 顶层诊断管线负责；此处 screenshot 固定 null。
  */
 
-import { toScopeElement, truncateText } from "../dom";
-import type { ISenseGenericFallback, ISenseScreenshot } from "../types";
+import { truncateText } from "../dom";
+import type { ISenseGenericFallback } from "../types";
 import type { IResolvedQuotas } from "../quotas";
 import { collectGenericElements } from "./collectGenericElements";
-
-async function captureOrNull(
-  captureScreenshot: ((scope: Element) => Promise<ISenseScreenshot>) | undefined,
-  scope: Element,
-): Promise<ISenseScreenshot | null> {
-  if (!captureScreenshot) {
-    return null;
-  }
-
-  try {
-    return await captureScreenshot(scope);
-  } catch {
-    // 拍失败不得假装已看见图像；a11y 仍给。
-    return null;
-  }
-}
 
 /**
  * 在 scopeRoot 内做配额 generic 扫描。scope 只用于回包字段，不扩大查询。
@@ -31,7 +16,6 @@ export async function buildGenericFallback(args: {
   scopeRoot: Document | ShadowRoot | Element;
   scope: "blocking-layer" | "root";
   quotas: IResolvedQuotas;
-  captureScreenshot: ((scope: Element) => Promise<ISenseScreenshot>) | undefined;
 }): Promise<ISenseGenericFallback> {
   const collected = collectGenericElements({
     scopeRoot: args.scopeRoot,
@@ -53,11 +37,6 @@ export async function buildGenericFallback(args: {
   const joined = a11yLines.join("\n");
   const textResult = truncateText(joined, args.quotas.a11yTextChars);
 
-  const screenshot = await captureOrNull(
-    args.captureScreenshot,
-    toScopeElement(args.scopeRoot),
-  );
-
   return {
     kind: "generic",
     scope: args.scope,
@@ -66,6 +45,6 @@ export async function buildGenericFallback(args: {
     maxNodes: args.quotas.maxNodes,
     interactables: collected.interactables,
     a11yText: textResult.text,
-    screenshot,
+    screenshot: null,
   };
 }
