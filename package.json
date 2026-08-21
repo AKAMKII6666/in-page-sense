@@ -1,6 +1,6 @@
 {
   "name": "in-page-sense",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Page-local sensing: scan e2e markers into a short menu and shallow tree.",
   "type": "module",
   "main": "./dist/index.js",
