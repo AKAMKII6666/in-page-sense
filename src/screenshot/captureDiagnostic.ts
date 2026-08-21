@@ -12,6 +12,10 @@ import {
   fillScreenshotNaturalSize,
 } from "./captureFullPage";
 import { readCurrentView, readDocumentCssSize } from "./readCurrentView";
+import {
+  suspendBackdropFilter,
+  waitNextFrame,
+} from "./suspendBackdropFilter";
 
 /** base64 字符硬上限，超限双 null。约 9MB 量级。 */
 export const MAX_SCREENSHOT_BASE64_CHARS = 12_000_000;
@@ -54,6 +58,7 @@ async function decodeNaturalSize(shot: ISenseScreenshot): Promise<ISenseScreensh
 
 /**
  * 产出诊断图 + currentView；任一步失败 → 双 null。
+ * 拍底图前临时关闭 backdrop-filter，结束后恢复（DOM 截屏无法正确合成毛玻璃）。
  */
 export async function captureDiagnostic(args: {
   root: Document | ShadowRoot | Element;
@@ -64,7 +69,11 @@ export async function captureDiagnostic(args: {
     currentView: null,
   };
 
+  const restoreBackdrop = suspendBackdropFilter(args.root);
+
   try {
+    await waitNextFrame(args.root);
+
     const currentView = readCurrentView(args.root);
     if (!currentView) {
       return dualNull;
@@ -102,6 +111,8 @@ export async function captureDiagnostic(args: {
     return { screenshot: annotated, currentView };
   } catch {
     return dualNull;
+  } finally {
+    restoreBackdrop();
   }
 }
 
